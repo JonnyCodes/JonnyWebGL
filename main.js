@@ -20,6 +20,7 @@ var main;
             }
             this.ctx.clearColor(0, 0, 0, 1);
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT);
+            this.camera = new Camera(new Vector3(0, 0, -3), 45, this.ctx.canvas.width, this.ctx.canvas.height, 0.1, 100);
             var shaderProgram = this.initShaderProgram(Shaders.vertexSource, Shaders.fragmentSource);
             this.programInfo = {
                 program: shaderProgram,
@@ -28,13 +29,14 @@ var main;
                     vertexColor: this.ctx.getAttribLocation(shaderProgram, "aVertexColor")
                 },
                 uniformLocations: {
+                    resolutionVec2: this.ctx.getUniformLocation(shaderProgram, "uResolution"),
                     projectionMatrix: this.ctx.getUniformLocation(shaderProgram, "uProjectionMatrix"),
                     modelViewMatrix: this.ctx.getUniformLocation(shaderProgram, "uModelViewMatrix")
                 }
             };
             this.shapes = [];
-            this.shapes.push(new Square(this.ctx, -1, -1, 2, 2));
-            this.shapes.push(new Square(this.ctx, 0, 0, 2, 2));
+            this.shapes.push(new Square(this.ctx, 10, 10, 25, 25));
+            this.shapes.push(new Square(this.ctx, 100, 100, 50, 50));
             this._prevTime = 0;
             requestAnimationFrame(this.render.bind(this));
         }
@@ -68,41 +70,24 @@ var main;
             }
             return shader;
         };
-        Main.prototype.addSquare = function (vertexPositions) {
-            var positionBuffer = this.ctx.createBuffer();
-            this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, positionBuffer);
-            this.ctx.bufferData(this.ctx.ARRAY_BUFFER, new Float32Array(vertexPositions), this.ctx.STATIC_DRAW);
-            var colorBuffer = this.ctx.createBuffer();
-            this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, colorBuffer);
-            var color = [
-                1, 1, 1, 1,
-                1, 0, 0, 1,
-                0, 1, 0, 1,
-                0, 0, 1, 1
-            ];
-            this.ctx.bufferData(this.ctx.ARRAY_BUFFER, new Float32Array(color), this.ctx.STATIC_DRAW);
-            return {
-                position: positionBuffer,
-                color: colorBuffer
-            };
-        };
         Main.prototype.drawScene = function (deltaTime) {
             var _this = this;
+            this.ctx.viewport(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
             this.ctx.clearColor(0, 0, 0, 1);
             this.ctx.clearDepth(1);
             this.ctx.enable(this.ctx.DEPTH_TEST);
             this.ctx.depthFunc(this.ctx.LEQUAL);
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT | this.ctx.DEPTH_BUFFER_BIT);
-            var camera = new Camera(new Vector3(0, 0, -6), 45, this.ctx.canvas.width, this.ctx.canvas.height, 0.1, 100);
             // camera.x += Math.cos(this._prevTime + deltaTime) * 1.5;
             // camera.y += Math.sin(this._prevTime + deltaTime) * 1.5;
             this.ctx.useProgram(this.programInfo.program);
-            this.ctx.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, camera.projectionMatrix);
-            this.ctx.uniformMatrix4fv(this.programInfo.uniformLocations.modelViewMatrix, false, camera.modelViewMatrix);
+            this.ctx.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, this.camera.projectionMatrix);
+            this.ctx.uniformMatrix4fv(this.programInfo.uniformLocations.modelViewMatrix, false, this.camera.modelViewMatrix);
             this.shapes.forEach(function (shape) {
                 _this.ctx.bindBuffer(_this.ctx.ARRAY_BUFFER, shape.positionBuffer);
                 _this.ctx.vertexAttribPointer(_this.programInfo.attribLocations.vertexPositions, 2, _this.ctx.FLOAT, false, 0, 0);
                 _this.ctx.enableVertexAttribArray(_this.programInfo.attribLocations.vertexPositions);
+                _this.ctx.uniform2f(_this.programInfo.uniformLocations.resolutionVec2, _this.ctx.canvas.width, _this.ctx.canvas.height);
                 _this.ctx.bindBuffer(_this.ctx.ARRAY_BUFFER, shape.colorBuffer);
                 _this.ctx.vertexAttribPointer(_this.programInfo.attribLocations.vertexColor, 4, _this.ctx.FLOAT, false, 0, 0);
                 _this.ctx.enableVertexAttribArray(_this.programInfo.attribLocations.vertexColor);
@@ -278,7 +263,7 @@ var main;
     var Shaders = /** @class */ (function () {
         function Shaders() {
         }
-        Shaders.vertexSource = "\n            attribute vec4 aVertexPosition;\n            attribute vec4 aVertexColor;\n\n            uniform mat4 uModelViewMatrix;\n            uniform mat4 uProjectionMatrix;\n\n            varying lowp vec4 vColor;\n\n            void main() {\n                gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;\n                vColor = aVertexColor;\n            }\n        ";
+        Shaders.vertexSource = "\n            attribute vec2 aVertexPosition;\n            attribute vec4 aVertexColor;\n\n            uniform vec2 uResolution;\n            uniform mat4 uModelViewMatrix;\n            uniform mat4 uProjectionMatrix;\n\n            varying lowp vec4 vColor;\n\n            void main() {\n                vec2 zeroToOne = aVertexPosition / uResolution;\n                vec2 zeroToTwo = zeroToOne * 2.0;\n                vec2 clipSpace = zeroToTwo - 1.0;\n                gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(clipSpace * vec2(1, -1), 0, 1);\n                vColor = aVertexColor;\n            }\n        ";
         Shaders.fragmentSource = "\n            varying lowp vec4 vColor;\n\n            void main() {\n                gl_FragColor = vColor;\n            }\n        ";
         return Shaders;
     }());
@@ -289,12 +274,6 @@ var main;
         return ProgramInfo;
     }());
     main.ProgramInfo = ProgramInfo;
-    var Buffers = /** @class */ (function () {
-        function Buffers() {
-        }
-        return Buffers;
-    }());
-    main.Buffers = Buffers;
     var Matrix = /** @class */ (function (_super) {
         __extends(Matrix, _super);
         function Matrix(rows, cols) {

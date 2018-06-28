@@ -3,6 +3,7 @@ namespace main {
     export class Main {
 
         private ctx: WebGLRenderingContext;
+        private camera: Camera;
         private programInfo: ProgramInfo;
         private shapes: Square[];
 
@@ -20,6 +21,15 @@ namespace main {
             this.ctx.clearColor(0, 0, 0, 1);
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT);
 
+            this.camera = new Camera(
+                new Vector3(0, 0, -3),
+                45,
+                this.ctx.canvas.width,
+                this.ctx.canvas.height,
+                0.1,
+                2000
+            );
+
             const shaderProgram: WebGLProgram = this.initShaderProgram(Shaders.vertexSource, Shaders.fragmentSource);
             this.programInfo = {
                 program: shaderProgram,
@@ -28,14 +38,15 @@ namespace main {
                     vertexColor: this.ctx.getAttribLocation(shaderProgram, "aVertexColor")
                 },
                 uniformLocations: {
+                    resolutionVec2: this.ctx.getUniformLocation(shaderProgram, "uResolution"),
                     projectionMatrix: this.ctx.getUniformLocation(shaderProgram, "uProjectionMatrix"),
                     modelViewMatrix: this.ctx.getUniformLocation(shaderProgram, "uModelViewMatrix")
                 }
             }
             this.shapes = [];
 
-            this.shapes.push(new Square(this.ctx, -1, -1, 2, 2));
-            this.shapes.push(new Square(this.ctx, 0, 0, 2, 2));
+            this.shapes.push(new Square(this.ctx, 10, 10, 25, 25));
+            this.shapes.push(new Square(this.ctx, 100, 100, 50, 50));
 
             this._prevTime = 0;
             requestAnimationFrame(this.render.bind(this));
@@ -54,7 +65,7 @@ namespace main {
         private initShaderProgram(vsSource: string, fsSource: string): WebGLProgram {
             const vertexShader: WebGLShader = this.loadShader(this.ctx.VERTEX_SHADER, vsSource);
             const fragmentShader: WebGLShader = this.loadShader(this.ctx.FRAGMENT_SHADER, fsSource);
-            
+
             const shaderProgram: WebGLProgram = this.ctx.createProgram();
             this.ctx.attachShader(shaderProgram, vertexShader);
             this.ctx.attachShader(shaderProgram, fragmentShader);
@@ -82,38 +93,8 @@ namespace main {
             return shader;
         }
 
-        private addSquare(vertexPositions: number[]): Buffers {
-            const positionBuffer: WebGLBuffer = this.ctx.createBuffer();
-            this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, positionBuffer);
-
-            this.ctx.bufferData(
-                this.ctx.ARRAY_BUFFER,
-                new Float32Array(vertexPositions),
-                this.ctx.STATIC_DRAW
-            );
-
-            const colorBuffer: WebGLBuffer = this.ctx.createBuffer();
-            this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, colorBuffer);
-            const color: number[] = [
-                1, 1, 1, 1,
-                1, 0, 0, 1,
-                0, 1, 0, 1,
-                0, 0, 1, 1
-            ];
-
-            this.ctx.bufferData(
-                this.ctx.ARRAY_BUFFER,
-                new Float32Array(color),
-                this.ctx.STATIC_DRAW
-            );
-
-            return {
-                position: positionBuffer,
-                color: colorBuffer
-            }
-        }
-
         private drawScene(deltaTime: number): void {
+            this.ctx.viewport(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
             this.ctx.clearColor(0, 0, 0, 1);
             this.ctx.clearDepth(1);
             this.ctx.enable(this.ctx.DEPTH_TEST);
@@ -121,29 +102,20 @@ namespace main {
 
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT | this.ctx.DEPTH_BUFFER_BIT);
 
-            const camera: Camera = new Camera(
-                new Vector3(0, 0, -6),
-                45,
-                this.ctx.canvas.width,
-                this.ctx.canvas.height,
-                0.1,
-                100
-            );
-
             // camera.x += Math.cos(this._prevTime + deltaTime) * 1.5;
             // camera.y += Math.sin(this._prevTime + deltaTime) * 1.5;
 
             this.ctx.useProgram(this.programInfo.program);
-                
+
             this.ctx.uniformMatrix4fv(
                 this.programInfo.uniformLocations.projectionMatrix,
                 false,
-                camera.projectionMatrix
+                this.camera.projectionMatrix
             );
             this.ctx.uniformMatrix4fv(
                 this.programInfo.uniformLocations.modelViewMatrix,
                 false,
-                camera.modelViewMatrix
+                this.camera.modelViewMatrix
             );
 
             this.shapes.forEach(shape => {
@@ -157,6 +129,8 @@ namespace main {
                     0
                 );
                 this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.vertexPositions);
+
+                this.ctx.uniform2f(this.programInfo.uniformLocations.resolutionVec2, this.ctx.canvas.width, this.ctx.canvas.height);
 
                 this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, shape.colorBuffer);
                 this.ctx.vertexAttribPointer(
@@ -182,12 +156,12 @@ namespace main {
 
         private _position: Vector3;
         public get x(): number { return this._position.x; }
-        public set x(val: number) { 
+        public set x(val: number) {
             this._position.x = val - this._position.x;
-            this.translate(new Vector3(this._position.x, 0, 0)); 
+            this.translate(new Vector3(this._position.x, 0, 0));
         }
         public get y(): number { return this._position.y; }
-        public set y(val: number) { 
+        public set y(val: number) {
             this._position.y = val - this._position.y;
             this.translate(new Vector3(0, this._position.y, 0));
         }
@@ -265,7 +239,7 @@ namespace main {
         }
         private _width: number;
         private _height: number;
-        private _positionBuffer: WebGLBuffer; 
+        private _positionBuffer: WebGLBuffer;
         public get positionBuffer(): WebGLBuffer { return this._positionBuffer; }
         private _colorBuffer: WebGLBuffer;
         public get colorBuffer(): WebGLBuffer { return this._colorBuffer; }
@@ -289,7 +263,7 @@ namespace main {
 
             this._colorBuffer = ctx.createBuffer();
             this._ctx.bindBuffer(this._ctx.ARRAY_BUFFER,  this._colorBuffer);
-            
+
             const color: number[] = [
                 1, 1, 1, 1,
                 1, 0, 0, 1,
@@ -300,7 +274,7 @@ namespace main {
                 this._ctx.ARRAY_BUFFER,
                 new Float32Array(color),
                 this._ctx.STATIC_DRAW
-            );            
+            );
         }
 
         private translate(x: number, y: number): void {
@@ -328,16 +302,20 @@ namespace main {
 
     export class Shaders {
         public static vertexSource: string = `
-            attribute vec4 aVertexPosition;
+            attribute vec2 aVertexPosition;
             attribute vec4 aVertexColor;
 
+            uniform vec2 uResolution;
             uniform mat4 uModelViewMatrix;
             uniform mat4 uProjectionMatrix;
 
             varying lowp vec4 vColor;
 
             void main() {
-                gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+                vec2 zeroToOne = aVertexPosition / uResolution;
+                vec2 zeroToTwo = zeroToOne * 2.0;
+                vec2 clipSpace = zeroToTwo - 1.0;
+                gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(clipSpace * vec2(1, -1), 0, 1);
                 vColor = aVertexColor;
             }
         `;
@@ -354,14 +332,12 @@ namespace main {
     export class ProgramInfo {
         public program: WebGLProgram;
         public attribLocations: { vertexPositions: number, vertexColor: number };
-        public uniformLocations: { projectionMatrix: WebGLUniformLocation, modelViewMatrix: WebGLUniformLocation };
+        public uniformLocations: { 
+            resolutionVec2?: WebGLUniformLocation,
+            projectionMatrix: WebGLUniformLocation,
+            modelViewMatrix: WebGLUniformLocation
+        };
     }
-
-    export class Buffers {
-        public position: WebGLBuffer;
-        public color?: WebGLBuffer;
-    }
-
     export class Matrix extends Array {
         protected _rows: number;
         protected _cols: number;

@@ -3,7 +3,7 @@ namespace main {
     export class Main {
 
         private ctx: WebGLRenderingContext;
-        private camera: Camera;
+        private camera: OrthogonalCamera;
         private programInfo: ProgramInfo;
         private shapes: Square[];
 
@@ -21,13 +21,10 @@ namespace main {
             this.ctx.clearColor(0, 0, 0, 1);
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT);
 
-            this.camera = new Camera(
-                new Vector3(0, 0, -3),
-                45,
-                this.ctx.canvas.width,
-                this.ctx.canvas.height,
+            this.camera = new OrthogonalCamera(
+                new Vector3(0, 0, -1),
                 0.1,
-                2000
+                100
             );
 
             const shaderProgram: WebGLProgram = this.initShaderProgram(Shaders.vertexSource, Shaders.fragmentSource);
@@ -45,8 +42,8 @@ namespace main {
             }
             this.shapes = [];
 
-            this.shapes.push(new Square(this.ctx, 10, 10, 25, 25));
-            this.shapes.push(new Square(this.ctx, 100, 100, 50, 50));
+            this.shapes.push(new Square(this.ctx, 0, 0, 25, 25));
+            this.shapes.push(new Square(this.ctx, (this.ctx.canvas.width - 50) / 2, (this.ctx.canvas.height - 50) / 2, 50, 50));
 
             this._prevTime = 0;
             requestAnimationFrame(this.render.bind(this));
@@ -102,8 +99,8 @@ namespace main {
 
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT | this.ctx.DEPTH_BUFFER_BIT);
 
-            // camera.x += Math.cos(this._prevTime + deltaTime) * 1.5;
-            // camera.y += Math.sin(this._prevTime + deltaTime) * 1.5;
+            // this.camera.x += Math.cos(this._prevTime + deltaTime) * 0.005;
+            // this.camera.y += Math.sin(this._prevTime + deltaTime) * 0.005;
 
             this.ctx.useProgram(this.programInfo.program);
 
@@ -146,15 +143,15 @@ namespace main {
                 this.ctx.drawArrays(this.ctx.TRIANGLE_STRIP, 0, shape.numVerts);
 
                 // Move squares
-                shape.x += Math.cos(this._prevTime + deltaTime) * 0.005;
-                shape.y += Math.sin(this._prevTime + deltaTime) * 0.005;
+                shape.x += Math.cos(this._prevTime + deltaTime) * 0.5;
+                shape.y += Math.sin(this._prevTime + deltaTime) * 0.5;
             });
         }
     }
 
     export class Camera {
 
-        private _position: Vector3;
+        protected _position: Vector3;
         public get x(): number { return this._position.x; }
         public set x(val: number) {
             this._position.x = val - this._position.x;
@@ -171,42 +168,22 @@ namespace main {
             this.translate(new Vector3(0, 0, this._position.z));
         }
 
-        private _vertFOV: number;
-        public get vertFOVDegs(): number { return this._vertFOV; }
-        public get vertFOVRads(): number { return this._vertFOV * Math.PI / 180; }
-
-        private _width: number;
-        public get width(): number { return this._width };
-        private _height: number;
-        public get height(): number { return this._height };
-        public get aspect(): number { return this._width / this._height; }
-
-        private _near: number;
+        protected _near: number;
         public get near(): number { return this._near; }
-        private _far: number;
+        protected _far: number;
         public get far(): number { return this._far; }
 
-        private _projectionMatrix: Matrix4x4;
+        protected _projectionMatrix: Matrix4x4;
         public get projectionMatrix(): Matrix4x4 { return this._projectionMatrix; }
-        private _modelViewMatrix: Matrix4x4;
+        protected _modelViewMatrix: Matrix4x4;
         public get modelViewMatrix(): Matrix4x4 { return this._modelViewMatrix; }
 
-        constructor(position: Vector3, verticalFOVDegs: number, width: number, height: number, near: number, far: number) {
-            this._vertFOV = verticalFOVDegs;
-            this._width = width;
-            this._height = height;
+        constructor(position: Vector3, near: number, far: number) {
+            this._position = position;
             this._near = near;
             this._far = far;
-            this._position = position;
 
-            this._projectionMatrix = new Matrix4x4();
-            Matrix4x4.perspective(
-                this._projectionMatrix,
-                this.vertFOVRads,
-                this.aspect,
-                this.near,
-                this.far
-            );
+            this._projectionMatrix = new Matrix4x4();            
 
             this._modelViewMatrix = new Matrix4x4();
             this.translate(position);
@@ -217,6 +194,64 @@ namespace main {
                 this._modelViewMatrix,
                 this._modelViewMatrix,
                 position
+            );
+        }
+    }
+
+    export class OrthogonalCamera extends Camera {
+
+        private _zoomScale: number;
+        public get zoomScale(): number { return this._zoomScale; }
+        public set zoomScale(val: number) {
+            this._zoomScale = val;
+
+            Matrix4x4.scale(
+                this._projectionMatrix,
+                this._projectionMatrix,
+                new Vector3(this._zoomScale, this._zoomScale, 1)
+            );
+        };
+
+        constructor(position: Vector3, near: number, far: number, zoomScale: number = 1) {
+            super(position, near, far);
+
+            // These coords are in clipspace, should they be in pixels?
+            Matrix4x4.orthogonal(
+                this._projectionMatrix,
+                -1, 1,
+                -1, 1,
+                0.1, 100
+            );
+
+            this.zoomScale = zoomScale;
+        }
+    }
+
+    export class PerspectiveCamera extends Camera {
+
+        private _vertFOV: number;
+        public get vertFOVDegs(): number { return this._vertFOV; }
+        public get vertFOVRads(): number { return this._vertFOV * Math.PI / 180; }
+
+        private _width: number;
+        public get width(): number { return this._width };
+        private _height: number;
+        public get height(): number { return this._height };
+        public get aspect(): number { return this._width / this._height; }
+
+        constructor(position: Vector3, near: number, far: number,  verticalFOVDegs: number, width: number, height: number) {
+            super(position, near, far);
+
+            this._vertFOV = verticalFOVDegs;
+            this._width = width;
+            this._height = height;
+
+            Matrix4x4.perspective(
+                this._projectionMatrix,
+                this.vertFOVRads,
+                this.aspect,
+                this._near,
+                this._far
             );
         }
     }
@@ -338,6 +373,7 @@ namespace main {
             modelViewMatrix: WebGLUniformLocation
         };
     }
+
     export class Matrix extends Array {
         protected _rows: number;
         protected _cols: number;
@@ -378,6 +414,14 @@ namespace main {
             out[13] = (a[1] * vec.x) + (a[5] * vec.y) + (a[9] * vec.z) + a[13];
             out[14] = (a[2] * vec.x) + (a[6] * vec.y) + (a[10] * vec.z) + a[14];
             out[15] = (a[3] * vec.x) + (a[7] * vec.y) + (a[11] * vec.z) + a[15];
+
+            return out;
+        }
+
+        public static scale(out: Matrix4x4, a: Matrix4x4, vec: Vector3): Matrix4x4 {
+            out[0] = a[0] * vec.x;
+            out[5] = a[5] * vec.y;
+            out[10] = a[10] * vec.z;
 
             return out;
         }

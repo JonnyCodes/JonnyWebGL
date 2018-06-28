@@ -20,7 +20,7 @@ var main;
             }
             this.ctx.clearColor(0, 0, 0, 1);
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT);
-            this.camera = new Camera(new Vector3(0, 0, -3), 45, this.ctx.canvas.width, this.ctx.canvas.height, 0.1, 100);
+            this.camera = new OrthogonalCamera(new Vector3(0, 0, -1), 0.1, 100);
             var shaderProgram = this.initShaderProgram(Shaders.vertexSource, Shaders.fragmentSource);
             this.programInfo = {
                 program: shaderProgram,
@@ -35,8 +35,8 @@ var main;
                 }
             };
             this.shapes = [];
-            this.shapes.push(new Square(this.ctx, 10, 10, 25, 25));
-            this.shapes.push(new Square(this.ctx, 100, 100, 50, 50));
+            this.shapes.push(new Square(this.ctx, 0, 0, 25, 25));
+            this.shapes.push(new Square(this.ctx, (this.ctx.canvas.width - 50) / 2, (this.ctx.canvas.height - 50) / 2, 50, 50));
             this._prevTime = 0;
             requestAnimationFrame(this.render.bind(this));
         }
@@ -78,8 +78,8 @@ var main;
             this.ctx.enable(this.ctx.DEPTH_TEST);
             this.ctx.depthFunc(this.ctx.LEQUAL);
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT | this.ctx.DEPTH_BUFFER_BIT);
-            // camera.x += Math.cos(this._prevTime + deltaTime) * 1.5;
-            // camera.y += Math.sin(this._prevTime + deltaTime) * 1.5;
+            // this.camera.x += Math.cos(this._prevTime + deltaTime) * 0.005;
+            // this.camera.y += Math.sin(this._prevTime + deltaTime) * 0.005;
             this.ctx.useProgram(this.programInfo.program);
             this.ctx.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, this.camera.projectionMatrix);
             this.ctx.uniformMatrix4fv(this.programInfo.uniformLocations.modelViewMatrix, false, this.camera.modelViewMatrix);
@@ -93,23 +93,19 @@ var main;
                 _this.ctx.enableVertexAttribArray(_this.programInfo.attribLocations.vertexColor);
                 _this.ctx.drawArrays(_this.ctx.TRIANGLE_STRIP, 0, shape.numVerts);
                 // Move squares
-                shape.x += Math.cos(_this._prevTime + deltaTime) * 0.005;
-                shape.y += Math.sin(_this._prevTime + deltaTime) * 0.005;
+                shape.x += Math.cos(_this._prevTime + deltaTime) * 0.5;
+                shape.y += Math.sin(_this._prevTime + deltaTime) * 0.5;
             });
         };
         return Main;
     }());
     main.Main = Main;
     var Camera = /** @class */ (function () {
-        function Camera(position, verticalFOVDegs, width, height, near, far) {
-            this._vertFOV = verticalFOVDegs;
-            this._width = width;
-            this._height = height;
+        function Camera(position, near, far) {
+            this._position = position;
             this._near = near;
             this._far = far;
-            this._position = position;
             this._projectionMatrix = new Matrix4x4();
-            Matrix4x4.perspective(this._projectionMatrix, this.vertFOVRads, this.aspect, this.near, this.far);
             this._modelViewMatrix = new Matrix4x4();
             this.translate(position);
         }
@@ -140,33 +136,6 @@ var main;
             enumerable: true,
             configurable: true
         });
-        Object.defineProperty(Camera.prototype, "vertFOVDegs", {
-            get: function () { return this._vertFOV; },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Camera.prototype, "vertFOVRads", {
-            get: function () { return this._vertFOV * Math.PI / 180; },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Camera.prototype, "width", {
-            get: function () { return this._width; },
-            enumerable: true,
-            configurable: true
-        });
-        ;
-        Object.defineProperty(Camera.prototype, "height", {
-            get: function () { return this._height; },
-            enumerable: true,
-            configurable: true
-        });
-        ;
-        Object.defineProperty(Camera.prototype, "aspect", {
-            get: function () { return this._width / this._height; },
-            enumerable: true,
-            configurable: true
-        });
         Object.defineProperty(Camera.prototype, "near", {
             get: function () { return this._near; },
             enumerable: true,
@@ -193,6 +162,69 @@ var main;
         return Camera;
     }());
     main.Camera = Camera;
+    var OrthogonalCamera = /** @class */ (function (_super) {
+        __extends(OrthogonalCamera, _super);
+        function OrthogonalCamera(position, near, far, zoomScale) {
+            if (zoomScale === void 0) { zoomScale = 1; }
+            var _this = _super.call(this, position, near, far) || this;
+            // These coords are in clipspace, should they be in pixels?
+            Matrix4x4.orthogonal(_this._projectionMatrix, -1, 1, -1, 1, 0.1, 100);
+            _this.zoomScale = zoomScale;
+            return _this;
+        }
+        Object.defineProperty(OrthogonalCamera.prototype, "zoomScale", {
+            get: function () { return this._zoomScale; },
+            set: function (val) {
+                this._zoomScale = val;
+                Matrix4x4.scale(this._projectionMatrix, this._projectionMatrix, new Vector3(this._zoomScale, this._zoomScale, 1));
+            },
+            enumerable: true,
+            configurable: true
+        });
+        ;
+        return OrthogonalCamera;
+    }(Camera));
+    main.OrthogonalCamera = OrthogonalCamera;
+    var PerspectiveCamera = /** @class */ (function (_super) {
+        __extends(PerspectiveCamera, _super);
+        function PerspectiveCamera(position, near, far, verticalFOVDegs, width, height) {
+            var _this = _super.call(this, position, near, far) || this;
+            _this._vertFOV = verticalFOVDegs;
+            _this._width = width;
+            _this._height = height;
+            Matrix4x4.perspective(_this._projectionMatrix, _this.vertFOVRads, _this.aspect, _this._near, _this._far);
+            return _this;
+        }
+        Object.defineProperty(PerspectiveCamera.prototype, "vertFOVDegs", {
+            get: function () { return this._vertFOV; },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(PerspectiveCamera.prototype, "vertFOVRads", {
+            get: function () { return this._vertFOV * Math.PI / 180; },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(PerspectiveCamera.prototype, "width", {
+            get: function () { return this._width; },
+            enumerable: true,
+            configurable: true
+        });
+        ;
+        Object.defineProperty(PerspectiveCamera.prototype, "height", {
+            get: function () { return this._height; },
+            enumerable: true,
+            configurable: true
+        });
+        ;
+        Object.defineProperty(PerspectiveCamera.prototype, "aspect", {
+            get: function () { return this._width / this._height; },
+            enumerable: true,
+            configurable: true
+        });
+        return PerspectiveCamera;
+    }(Camera));
+    main.PerspectiveCamera = PerspectiveCamera;
     var Square = /** @class */ (function () {
         function Square(ctx, x, y, width, height) {
             this.numVerts = 4;
@@ -312,6 +344,12 @@ var main;
             out[13] = (a[1] * vec.x) + (a[5] * vec.y) + (a[9] * vec.z) + a[13];
             out[14] = (a[2] * vec.x) + (a[6] * vec.y) + (a[10] * vec.z) + a[14];
             out[15] = (a[3] * vec.x) + (a[7] * vec.y) + (a[11] * vec.z) + a[15];
+            return out;
+        };
+        Matrix4x4.scale = function (out, a, vec) {
+            out[0] = a[0] * vec.x;
+            out[5] = a[5] * vec.y;
+            out[10] = a[10] * vec.z;
             return out;
         };
         Matrix4x4.perspective = function (out, verticalFOV, aspect, near, far) {

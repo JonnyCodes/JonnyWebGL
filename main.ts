@@ -384,6 +384,13 @@ namespace main {
 
             this._rows = rows;
             this._cols = cols;
+
+            // Set to identity matrix
+            for (let i = 0; i < this._rows; i++) {
+                for (let j = 0; j < this._cols; j++) {
+                    this[i + j] = i === j;
+                }
+            }
         }
     }
 

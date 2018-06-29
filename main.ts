@@ -18,6 +18,7 @@ namespace main {
                 return;
             }
 
+            this.ctx.enable(this.ctx.CULL_FACE);
             this.ctx.clearColor(0, 0, 0, 1);
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT);
 
@@ -300,10 +301,10 @@ namespace main {
             this._ctx.bindBuffer(this._ctx.ARRAY_BUFFER,  this._colorBuffer);
 
             const color: number[] = [
-                1, 1, 1, 1,
-                1, 0, 0, 1,
-                0, 1, 0, 1,
-                0, 0, 1, 1
+                1, 1, 1, 1, // vertex 0 = Bottom Left
+                1, 0, 0, 1, // vertex 1 = Bottom Right
+                0, 1, 0, 1, // vertex 2 = Top Left
+                0, 0, 1, 1, // vertex 4 = Top Right
             ];
             this._ctx.bufferData(
                 this._ctx.ARRAY_BUFFER,
@@ -324,13 +325,13 @@ namespace main {
             );
         }
 
-        // TODO : I don't understand the order of the vertices
+        // Draw in CCW order
         private getVertexPositions(): number[] {
             return [
-                this._x + this._width, this._y + this._height, // Bottom Right
                 this._x, this._y + this._height, // Bottom Left
+                this._x + this._width, this._y + this._height, // Bottom Right
+                this._x, this._y, // Top Left
                 this._x + this._width, this._y, // Top Right
-                this._x, this._y // Top Left
             ];
         }
     }

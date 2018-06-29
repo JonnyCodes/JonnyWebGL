@@ -18,6 +18,7 @@ var main;
                 console.error("Unable to initialize WebGL.");
                 return;
             }
+            this.ctx.enable(this.ctx.CULL_FACE);
             this.ctx.clearColor(0, 0, 0, 1);
             this.ctx.clear(this.ctx.COLOR_BUFFER_BIT);
             this.camera = new OrthogonalCamera(new Vector3(0, 0, -1), 0.1, 100);
@@ -242,7 +243,7 @@ var main;
                 1, 1, 1, 1,
                 1, 0, 0, 1,
                 0, 1, 0, 1,
-                0, 0, 1, 1
+                0, 0, 1, 1,
             ];
             this._ctx.bufferData(this._ctx.ARRAY_BUFFER, new Float32Array(color), this._ctx.STATIC_DRAW);
         }
@@ -283,10 +284,10 @@ var main;
         // TODO : I don't understand the order of the vertices
         Square.prototype.getVertexPositions = function () {
             return [
-                this._x + this._width, this._y + this._height,
                 this._x, this._y + this._height,
+                this._x + this._width, this._y + this._height,
+                this._x, this._y,
                 this._x + this._width, this._y,
-                this._x, this._y // Top Left
             ];
         };
         return Square;

@@ -13,7 +13,7 @@ export class Matrix extends Array {
         // Set to identity matrix
         for (let i = 0; i < this._rows; i++) {
             for (let j = 0; j < this._cols; j++) {
-                this[i + j] = i === j;
+                this[i * this._cols + j] = i === j;
             }
         }
     }

@@ -1,7 +1,7 @@
-import { Vector3 } from "./core/math/Vector";
 import { OrthogonalCamera } from "./core/camera/OrthogonalCamera";
-import { Shaders } from "./core/shaders/Shaders";
 import { Square } from "./core/display/Square";
+import { Vector3 } from "./core/math/Vector";
+import { Shaders } from "./core/shaders/Shaders";
 
 export class Main {
 
@@ -162,6 +162,5 @@ export class ProgramInfo {
         modelViewMatrix: WebGLUniformLocation
     };
 }
-
 
 new Main();

@@ -4,11 +4,12 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "build": "node_modules/.bin/tsc"
+    "start": "parcel index.html --open"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "parcel-bundler": "^1.9.3",
     "typescript": "^2.9.2"
   }
 }

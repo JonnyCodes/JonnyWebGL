@@ -6,18 +6,18 @@ export class Camera {
     protected _position: Vector3;
     public get x(): number { return this._position.x; }
     public set x(val: number) {
-        this._position.x = val - this._position.x;
-        this.translate(new Vector3(this._position.x, 0, 0));
+        this.translate(new Vector3(val - this._position.x, 0, 0));
+        this._position.x = val;
     }
     public get y(): number { return this._position.y; }
     public set y(val: number) {
-        this._position.y = val - this._position.y;
-        this.translate(new Vector3(0, this._position.y, 0));
+        this.translate(new Vector3(0, val - this._position.y, 0));
+        this._position.y = val;
     }
     public get z(): number { return this._position.z; }
     public set z(val: number) {
-        this._position.z = val - this._position.z;
-        this.translate(new Vector3(0, 0, this._position.z));
+        this.translate(new Vector3(0, 0, val - this._position.z));
+        this._position.z = val;
     }
 
     protected _near: number;
@@ -41,7 +41,7 @@ export class Camera {
         this.translate(position);
     }
 
-    public translate(position: Vector3): void {
+    protected translate(position: Vector3): void {
         Matrix4x4.translate(
             this._modelViewMatrix,
             this._modelViewMatrix,

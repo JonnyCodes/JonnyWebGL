@@ -22,12 +22,12 @@ export class Square {
     private _positionBuffer: WebGLBuffer;
     public get positionBuffer(): WebGLBuffer { return this._positionBuffer; }
 
-    private _colorBuffer: WebGLBuffer;
-    public get colorBuffer(): WebGLBuffer { return this._colorBuffer; }
+    private _textureCoordBuffer: WebGLBuffer;
+    public get textureCoordBuffer(): WebGLBuffer { return this._textureCoordBuffer; }
 
-    private _ctx: WebGLRenderingContext // I don't like having a reference to this on every object, maybe make it a global static?
+    private _ctx: WebGLRenderingContext // I don't like having a reference to this on every object, maybe make it a global static/singleton?
 
-    constructor(ctx: WebGLRenderingContext, x: number, y: number, width: number, height: number) {
+    constructor(ctx: WebGLRenderingContext, x: number, y: number, width: number, height: number, image: HTMLImageElement) {
         this._x = x;
         this._y = y;
         this._width = width;
@@ -42,20 +42,30 @@ export class Square {
             this._ctx.STATIC_DRAW
         );
 
-        this._colorBuffer = ctx.createBuffer();
-        this._ctx.bindBuffer(this._ctx.ARRAY_BUFFER,  this._colorBuffer);
-
-        const color: number[] = [
-            1, 1, 1, 1, // vertex 0 = Bottom Left
-            1, 0, 0, 1, // vertex 1 = Bottom Right
-            0, 1, 0, 1, // vertex 2 = Top Left
-            0, 0, 1, 1, // vertex 4 = Top Right
-        ];
+        this._textureCoordBuffer = ctx.createBuffer();
+        this._ctx.bindBuffer(this._ctx.ARRAY_BUFFER, this._textureCoordBuffer);
         this._ctx.bufferData(
             this._ctx.ARRAY_BUFFER,
-            new Float32Array(color),
+            new Float32Array([
+                0, 1, // BL
+                1, 1, // BR
+                0, 0, // TL
+                1, 0 // TR
+            ]),
             this._ctx.STATIC_DRAW
         );
+
+        var texture = this._ctx.createTexture();
+        this._ctx.bindTexture(this._ctx.TEXTURE_2D, texture);
+
+        // Set the parameters so we can render any size image.
+        this._ctx.texParameteri(this._ctx.TEXTURE_2D, this._ctx.TEXTURE_WRAP_S, this._ctx.CLAMP_TO_EDGE);
+        this._ctx.texParameteri(this._ctx.TEXTURE_2D, this._ctx.TEXTURE_WRAP_T, this._ctx.CLAMP_TO_EDGE);
+        this._ctx.texParameteri(this._ctx.TEXTURE_2D, this._ctx.TEXTURE_MIN_FILTER, this._ctx.NEAREST);
+        this._ctx.texParameteri(this._ctx.TEXTURE_2D, this._ctx.TEXTURE_MAG_FILTER, this._ctx.NEAREST);
+
+        // Upload the image into the texture.
+        this._ctx.texImage2D(this._ctx.TEXTURE_2D, 0, this._ctx.RGBA, this._ctx.RGBA, this._ctx.UNSIGNED_BYTE, image);
     }
 
     private translate(x: number, y: number): void {

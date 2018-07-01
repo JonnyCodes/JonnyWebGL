@@ -19,7 +19,7 @@ export class OrthogonalCamera extends Camera {
     constructor(position: Vector3, near: number, far: number, zoomScale: number = 1) {
         super(position, near, far);
 
-        // These coords are in clipspace, should they be in pixels?
+        // These coords are in clipspace, I want them in pixels
         Matrix4x4.orthogonal(
             this._projectionMatrix,
             -1, 1,

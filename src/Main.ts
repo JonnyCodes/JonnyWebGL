@@ -2,6 +2,7 @@ import { OrthogonalCamera } from "./core/camera/OrthogonalCamera";
 import { Square } from "./core/display/Square";
 import { Vector3 } from "./core/math/Vector";
 import { Shaders } from "./core/shaders/Shaders";
+import { MathUtil } from "./core/math/MathUtil";
 
 export class Main {
 
@@ -36,7 +37,7 @@ export class Main {
             program: shaderProgram,
             attribLocations: {
                 vertexPositions: this.ctx.getAttribLocation(shaderProgram, "aVertexPosition"),
-                vertexColor: this.ctx.getAttribLocation(shaderProgram, "aVertexColor")
+                textureCoord: this.ctx.getAttribLocation(shaderProgram, "aTextureCoord")
             },
             uniformLocations: {
                 resolutionVec2: this.ctx.getUniformLocation(shaderProgram, "uResolution"),
@@ -45,11 +46,25 @@ export class Main {
             }
         }
         this.shapes = [];
+        
+        let testImage: HTMLImageElement = document.getElementById("testImage") as HTMLImageElement;
 
-        this.shapes.push(new Square(this.ctx, 0, 0, 25, 25));
-        this.shapes.push(new Square(this.ctx, (this.ctx.canvas.width - 50) / 2, (this.ctx.canvas.height - 50) / 2, 50, 50));
+        for (let i = 0; i < 10; i++) {
+            const randWidth: number = MathUtil.getRandInt(10, 100);
+            const randHeight: number = MathUtil.getRandInt(10, 100);
+
+            this.shapes.push(new Square(
+                this.ctx,
+                MathUtil.getRandInt(0, this.ctx.canvas.width - randWidth),
+                MathUtil.getRandInt(0, this.ctx.canvas.width - randHeight),
+                randWidth,
+                randHeight,
+                testImage
+            ));
+        }
 
         this._prevTime = 0;
+
         requestAnimationFrame(this.render.bind(this));
     }
 
@@ -103,9 +118,6 @@ export class Main {
 
         this.ctx.clear(this.ctx.COLOR_BUFFER_BIT | this.ctx.DEPTH_BUFFER_BIT);
 
-        // this.camera.x += Math.cos(this._prevTime + deltaTime) * 0.005;
-        // this.camera.y += Math.sin(this._prevTime + deltaTime) * 0.005;
-
         this.ctx.useProgram(this.programInfo.program);
 
         this.ctx.uniformMatrix4fv(
@@ -133,16 +145,16 @@ export class Main {
 
             this.ctx.uniform2f(this.programInfo.uniformLocations.resolutionVec2, this.ctx.canvas.width, this.ctx.canvas.height);
 
-            this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, shape.colorBuffer);
+            this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, shape.textureCoordBuffer);
             this.ctx.vertexAttribPointer(
-                this.programInfo.attribLocations.vertexColor,
-                4,
+                this.programInfo.attribLocations.textureCoord,
+                2,
                 this.ctx.FLOAT,
                 false,
                 0,
                 0
             );
-            this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.vertexColor);
+            this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
 
             this.ctx.drawArrays(this.ctx.TRIANGLE_STRIP, 0, shape.numVerts);
 
@@ -155,7 +167,7 @@ export class Main {
 
 export class ProgramInfo {
     public program: WebGLProgram;
-    public attribLocations: { vertexPositions: number, vertexColor: number };
+    public attribLocations: { vertexPositions: number, textureCoord: number };
     public uniformLocations: { 
         resolutionVec2?: WebGLUniformLocation,
         projectionMatrix: WebGLUniformLocation,
@@ -163,4 +175,7 @@ export class ProgramInfo {
     };
 }
 
-new Main();
+let test: HTMLImageElement = document.getElementById("testImage") as HTMLImageElement;
+test.onload = () => {
+    new Main();
+}

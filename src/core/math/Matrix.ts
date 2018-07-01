@@ -1,19 +1,19 @@
 import { Vector3 } from "./Vector";
 
 export class Matrix extends Array {
-    protected _rows: number;
-    protected _cols: number;
+    protected _numRows: number;
+    protected _numCols: number;
 
     constructor(rows: number, cols: number) {
         super(rows * cols);
 
-        this._rows = rows;
-        this._cols = cols;
+        this._numRows = rows;
+        this._numCols = cols;
 
         // Set to identity matrix
-        for (let i = 0; i < this._rows; i++) {
-            for (let j = 0; j < this._cols; j++) {
-                this[i * this._cols + j] = i === j;
+        for (let i = 0; i < this._numRows; i++) {
+            for (let j = 0; j < this._numCols; j++) {
+                this[i * this._numCols + j] = Number(i === j);
             }
         }
     }

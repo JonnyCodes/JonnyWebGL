@@ -47,9 +47,22 @@ export class Main {
         }
         this.shapes = [];
         
-        let testImage: HTMLImageElement = document.getElementById("testImage") as HTMLImageElement;
 
-        for (let i = 0; i < 10; i++) {
+        // TODO: Load images and create textures, store them in an object (key = url?)
+        const testImage: HTMLImageElement = document.getElementById("testImage") as HTMLImageElement;
+        const texture = this.ctx.createTexture();
+        this.ctx.bindTexture(this.ctx.TEXTURE_2D, texture);
+
+        // Set the parameters so we can render any size image.
+        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_WRAP_S, this.ctx.CLAMP_TO_EDGE);
+        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_WRAP_T, this.ctx.CLAMP_TO_EDGE);
+        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_MIN_FILTER, this.ctx.NEAREST);
+        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_MAG_FILTER, this.ctx.NEAREST);
+
+        // Upload the image into the texture.
+        this.ctx.texImage2D(this.ctx.TEXTURE_2D, 0, this.ctx.RGBA, this.ctx.RGBA, this.ctx.UNSIGNED_BYTE, testImage);
+
+        for (let i = 0; i < 5000; i++) {
             const randWidth: number = MathUtil.getRandInt(10, 100);
             const randHeight: number = MathUtil.getRandInt(10, 100);
 
@@ -59,7 +72,7 @@ export class Main {
                 MathUtil.getRandInt(0, this.ctx.canvas.width - randHeight),
                 randWidth,
                 randHeight,
-                testImage
+                texture
             ));
         }
 
@@ -132,6 +145,10 @@ export class Main {
         );
 
         this.shapes.forEach(shape => {
+
+            this.ctx.activeTexture(this.ctx.TEXTURE0);
+            this.ctx.bindTexture(this.ctx.TEXTURE_2D, shape.texture);
+
             this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, shape.positionBuffer);
             this.ctx.vertexAttribPointer(
                 this.programInfo.attribLocations.vertexPositions,
@@ -161,6 +178,7 @@ export class Main {
             // Move squares
             shape.x += Math.cos(this._prevTime + deltaTime) * 0.5;
             shape.y += Math.sin(this._prevTime + deltaTime) * 0.5;
+            shape.update();
         });
     }
 }
@@ -169,13 +187,27 @@ export class ProgramInfo {
     public program: WebGLProgram;
     public attribLocations: { vertexPositions: number, textureCoord: number };
     public uniformLocations: { 
-        resolutionVec2?: WebGLUniformLocation,
+        resolutionVec2: WebGLUniformLocation,
         projectionMatrix: WebGLUniformLocation,
         modelViewMatrix: WebGLUniformLocation
     };
 }
 
-let test: HTMLImageElement = document.getElementById("testImage") as HTMLImageElement;
-test.onload = () => {
+// TODO: Stop using parcelJS
+
+// const loader: Loader = new Loader(
+//     [
+//         "./img/uv_test.jpg"
+//     ],
+//     (images: HTMLImageElement[]) => {
+//         new Main(images);
+//     }
+// );
+
+// loader.start();
+
+
+let image: HTMLImageElement = document.getElementById("testImage") as HTMLImageElement;
+image.onload = () => {
     new Main();
-}
+};

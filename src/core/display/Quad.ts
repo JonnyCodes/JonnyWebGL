@@ -25,38 +25,35 @@ export class Quad {
     private _textureCoordBuffer: WebGLBuffer;
     public get textureCoordBuffer(): WebGLBuffer { return this._textureCoordBuffer; }
 
-    private _ctx: WebGLRenderingContext // I don't like having a reference to this on every object, maybe make it a global static/singleton?
-
     constructor(ctx: WebGLRenderingContext, x: number, y: number, width: number, height: number, texture: WebGLTexture) {
         this._x = x;
         this._y = y;
         this._width = width;
         this._height = height;
         this._texture = texture
-        this._ctx = ctx;
 
         this._translationX = 0;
         this._translationY = 0;
 
         this._positionBuffer = ctx.createBuffer();
-        this._ctx.bindBuffer(this._ctx.ARRAY_BUFFER, this._positionBuffer);
-        this._ctx.bufferData(
-            this._ctx.ARRAY_BUFFER,
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this._positionBuffer);
+        ctx.bufferData(
+            ctx.ARRAY_BUFFER,
             new Float32Array(this.getVertexPositions()),
-            this._ctx.DYNAMIC_DRAW
+            ctx.DYNAMIC_DRAW
         );
 
         this._textureCoordBuffer = ctx.createBuffer();
-        this._ctx.bindBuffer(this._ctx.ARRAY_BUFFER, this._textureCoordBuffer);
-        this._ctx.bufferData(
-            this._ctx.ARRAY_BUFFER,
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, this._textureCoordBuffer);
+        ctx.bufferData(
+            ctx.ARRAY_BUFFER,
             new Float32Array([
                 0, 1, // BL
                 1, 1, // BR
                 0, 0, // TL
                 1, 0 // TR
             ]),
-            this._ctx.STATIC_DRAW
+            ctx.STATIC_DRAW
         );
     }
 

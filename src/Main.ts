@@ -25,6 +25,9 @@ export class Main {
         this.ctx.enable(this.ctx.CULL_FACE);
         this.ctx.clearColor(0, 0, 0, 1);
         this.ctx.clear(this.ctx.COLOR_BUFFER_BIT);
+        this.ctx.enable(this.ctx.DEPTH_TEST);
+        this.ctx.depthFunc(this.ctx.LEQUAL);
+        this.ctx.viewport(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 
         this.camera = new OrthogonalCamera(
             new Vector3(0, 0, -1),
@@ -137,12 +140,8 @@ export class Main {
     }
 
     private drawScene(deltaTime: number): void {
-        this.ctx.viewport(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
         this.ctx.clearColor(0, 0, 0, 1);
         this.ctx.clearDepth(1);
-        this.ctx.enable(this.ctx.DEPTH_TEST);
-        this.ctx.depthFunc(this.ctx.LEQUAL);
-
         this.ctx.clear(this.ctx.COLOR_BUFFER_BIT | this.ctx.DEPTH_BUFFER_BIT);
 
         this.ctx.useProgram(this.programInfo.program);

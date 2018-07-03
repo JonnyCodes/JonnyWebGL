@@ -1,5 +1,5 @@
 import { OrthogonalCamera } from "./core/camera/OrthogonalCamera";
-import { Square } from "./core/display/Square";
+import { Quad } from "./core/display/Quad";
 import { Vector3 } from "./core/math/Vector";
 import { Shaders } from "./core/shaders/Shaders";
 import { MathUtil } from "./core/math/MathUtil";
@@ -9,7 +9,7 @@ export class Main {
     private ctx: WebGLRenderingContext;
     private camera: OrthogonalCamera;
     private programInfo: ProgramInfo;
-    private shapes: Square[];
+    private shapes: Quad[];
 
     private _prevTime: number;
 
@@ -41,6 +41,7 @@ export class Main {
             },
             uniformLocations: {
                 resolutionVec2: this.ctx.getUniformLocation(shaderProgram, "uResolution"),
+                translationVec2: this.ctx.getUniformLocation(shaderProgram, "uTranslation"),
                 projectionMatrix: this.ctx.getUniformLocation(shaderProgram, "uProjectionMatrix"),
                 modelViewMatrix: this.ctx.getUniformLocation(shaderProgram, "uModelViewMatrix")
             }
@@ -62,17 +63,30 @@ export class Main {
         // Upload the image into the texture.
         this.ctx.texImage2D(this.ctx.TEXTURE_2D, 0, this.ctx.RGBA, this.ctx.RGBA, this.ctx.UNSIGNED_BYTE, testImage);
 
-        for (let i = 0; i < 5000; i++) {
+        const testImage2: HTMLImageElement = document.getElementById("testImage2") as HTMLImageElement;
+        const texture2 = this.ctx.createTexture();
+        this.ctx.bindTexture(this.ctx.TEXTURE_2D, texture2);
+
+        // Set the parameters so we can render any size image.
+        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_WRAP_S, this.ctx.CLAMP_TO_EDGE);
+        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_WRAP_T, this.ctx.CLAMP_TO_EDGE);
+        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_MIN_FILTER, this.ctx.NEAREST);
+        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_MAG_FILTER, this.ctx.NEAREST);
+
+        // Upload the image into the texture.
+        this.ctx.texImage2D(this.ctx.TEXTURE_2D, 0, this.ctx.RGBA, this.ctx.RGBA, this.ctx.UNSIGNED_BYTE, testImage2);
+
+        for (let i = 0; i < 10000; i++) {
             const randWidth: number = MathUtil.getRandInt(10, 100);
             const randHeight: number = MathUtil.getRandInt(10, 100);
 
-            this.shapes.push(new Square(
+            this.shapes.push(new Quad(
                 this.ctx,
                 MathUtil.getRandInt(0, this.ctx.canvas.width - randWidth),
                 MathUtil.getRandInt(0, this.ctx.canvas.width - randHeight),
                 randWidth,
                 randHeight,
-                texture
+                i % 2 === 0 ? texture : texture2
             ));
         }
 
@@ -144,11 +158,13 @@ export class Main {
             this.camera.modelViewMatrix
         );
 
+        this.ctx.uniform2f(this.programInfo.uniformLocations.resolutionVec2, this.ctx.canvas.width, this.ctx.canvas.height);
+
         this.shapes.forEach(shape => {
 
-            this.ctx.activeTexture(this.ctx.TEXTURE0);
             this.ctx.bindTexture(this.ctx.TEXTURE_2D, shape.texture);
-
+            
+            this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.vertexPositions);
             this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, shape.positionBuffer);
             this.ctx.vertexAttribPointer(
                 this.programInfo.attribLocations.vertexPositions,
@@ -158,10 +174,8 @@ export class Main {
                 0,
                 0
             );
-            this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.vertexPositions);
 
-            this.ctx.uniform2f(this.programInfo.uniformLocations.resolutionVec2, this.ctx.canvas.width, this.ctx.canvas.height);
-
+            this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
             this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, shape.textureCoordBuffer);
             this.ctx.vertexAttribPointer(
                 this.programInfo.attribLocations.textureCoord,
@@ -171,14 +185,13 @@ export class Main {
                 0,
                 0
             );
-            this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
 
             this.ctx.drawArrays(this.ctx.TRIANGLE_STRIP, 0, shape.numVerts);
 
             // Move squares
             shape.x += Math.cos(this._prevTime + deltaTime) * 0.5;
             shape.y += Math.sin(this._prevTime + deltaTime) * 0.5;
-            shape.update();
+            this.ctx.uniform2fv(this.programInfo.uniformLocations.translationVec2, shape.translation);
         });
     }
 }
@@ -188,12 +201,13 @@ export class ProgramInfo {
     public attribLocations: { vertexPositions: number, textureCoord: number };
     public uniformLocations: { 
         resolutionVec2: WebGLUniformLocation,
+        translationVec2: WebGLUniformLocation,
         projectionMatrix: WebGLUniformLocation,
         modelViewMatrix: WebGLUniformLocation
     };
 }
 
-// TODO: Stop using parcelJS
+// TODO: parcelJS sucks dog poo, stop using it
 
 // const loader: Loader = new Loader(
 //     [

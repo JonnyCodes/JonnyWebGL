@@ -1,13 +1,10 @@
+import { Vector2 } from "../math/Vector";
+
 export class Quad {
 
     public numVerts: number = 4;
 
-    private _x: number;
-    public get x(): number { return this._x + this._translationX; }
-    public set x(val) { this._translationX = val - this._x; }
-    private _y: number;
-    public get y(): number { return this._y + this._translationY; }
-    public set y(val) { this._translationY = val - this._y; }
+    public position: Vector2;
 
     private _width: number;
     private _height: number;
@@ -18,28 +15,25 @@ export class Quad {
     private _positionBuffer: WebGLBuffer;
     public get positionBuffer(): WebGLBuffer { return this._positionBuffer; }
 
-    public get translation(): number[] { return [this._translationX, this._translationY]; }
-    private _translationX: number;
-    private _translationY: number;
-
     private _textureCoordBuffer: WebGLBuffer;
     public get textureCoordBuffer(): WebGLBuffer { return this._textureCoordBuffer; }
 
     constructor(ctx: WebGLRenderingContext, x: number, y: number, width: number, height: number, texture: WebGLTexture) {
-        this._x = x;
-        this._y = y;
+        this.position = new Vector2(x, y);
         this._width = width;
         this._height = height;
         this._texture = texture
-
-        this._translationX = 0;
-        this._translationY = 0;
 
         this._positionBuffer = ctx.createBuffer();
         ctx.bindBuffer(ctx.ARRAY_BUFFER, this._positionBuffer);
         ctx.bufferData(
             ctx.ARRAY_BUFFER,
-            new Float32Array(this.getVertexPositions()),
+            new Float32Array([
+                0, height, // Bottom Left
+                width, height, // Bottom Right
+                0, 0, // Top Left
+                width, 0 // Top Right
+            ]),
             ctx.DYNAMIC_DRAW
         );
 
@@ -55,15 +49,5 @@ export class Quad {
             ]),
             ctx.STATIC_DRAW
         );
-    }
-
-    // Draw in CCW order
-    private getVertexPositions(): number[] {
-        return [
-            this._x, this._y + this._height, // Bottom Left
-            this._x + this._width, this._y + this._height, // Bottom Right
-            this._x, this._y, // Top Left
-            this._x + this._width, this._y, // Top Right
-        ];
     }
 }

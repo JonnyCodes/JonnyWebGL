@@ -44,7 +44,7 @@ export class Main {
             },
             uniformLocations: {
                 resolutionVec2: this.ctx.getUniformLocation(shaderProgram, "uResolution"),
-                translationVec2: this.ctx.getUniformLocation(shaderProgram, "uTranslation"),
+                positionVec2: this.ctx.getUniformLocation(shaderProgram, "uPosition"),
                 projectionMatrix: this.ctx.getUniformLocation(shaderProgram, "uProjectionMatrix"),
                 modelViewMatrix: this.ctx.getUniformLocation(shaderProgram, "uModelViewMatrix")
             }
@@ -79,7 +79,7 @@ export class Main {
         // Upload the image into the texture.
         this.ctx.texImage2D(this.ctx.TEXTURE_2D, 0, this.ctx.RGBA, this.ctx.RGBA, this.ctx.UNSIGNED_BYTE, testImage2);
 
-        for (let i = 0; i < 10000; i++) {
+        for (let i = 0; i < 1000; i++) {
             const randWidth: number = MathUtil.getRandInt(10, 100);
             const randHeight: number = MathUtil.getRandInt(10, 100);
 
@@ -188,9 +188,9 @@ export class Main {
             this.ctx.drawArrays(this.ctx.TRIANGLE_STRIP, 0, shape.numVerts);
 
             // Move squares
-            shape.x += Math.cos(this._prevTime + deltaTime) * 0.5;
-            shape.y += Math.sin(this._prevTime + deltaTime) * 0.5;
-            this.ctx.uniform2fv(this.programInfo.uniformLocations.translationVec2, shape.translation);
+            shape.position.x += Math.cos(this._prevTime + deltaTime) * 0.5;
+            shape.position.y += Math.sin(this._prevTime + deltaTime) * 0.5;
+            this.ctx.uniform2fv(this.programInfo.uniformLocations.positionVec2, shape.position.asArray());
         });
     }
 }
@@ -200,7 +200,7 @@ export class ProgramInfo {
     public attribLocations: { vertexPositions: number, textureCoord: number };
     public uniformLocations: { 
         resolutionVec2: WebGLUniformLocation,
-        translationVec2: WebGLUniformLocation,
+        positionVec2: WebGLUniformLocation,
         projectionMatrix: WebGLUniformLocation,
         modelViewMatrix: WebGLUniformLocation
     };

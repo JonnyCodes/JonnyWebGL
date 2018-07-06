@@ -11,7 +11,7 @@ export class Shaders {
         varying highp vec2 vTextureCoord;
 
         void main() {
-            vec2 zeroToOne = (aVertexPosition + uPosition) / uResolution;
+            vec2 zeroToOne = (aVertexPosition) / uResolution;
             vec2 zeroToTwo = zeroToOne * 2.0;
             vec2 clipSpace = zeroToTwo - 1.0;
             gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(clipSpace * vec2(1, -1), 0, 1);

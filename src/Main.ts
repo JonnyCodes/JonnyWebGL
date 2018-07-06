@@ -6,6 +6,9 @@ import { MathUtil } from "./core/math/MathUtil";
 
 export class Main {
 
+    private static NUM_QUADS: number = 25000;
+    private static BATCH_SIZE: number = 1000;
+
     private ctx: WebGLRenderingContext;
     private camera: OrthogonalCamera;
     private programInfo: ProgramInfo;
@@ -66,30 +69,31 @@ export class Main {
         // Upload the image into the texture.
         this.ctx.texImage2D(this.ctx.TEXTURE_2D, 0, this.ctx.RGBA, this.ctx.RGBA, this.ctx.UNSIGNED_BYTE, testImage);
 
-        const testImage2: HTMLImageElement = document.getElementById("testImage2") as HTMLImageElement;
-        const texture2 = this.ctx.createTexture();
-        this.ctx.bindTexture(this.ctx.TEXTURE_2D, texture2);
+        // const testImage2: HTMLImageElement = document.getElementById("testImage2") as HTMLImageElement;
+        // const texture2 = this.ctx.createTexture();
+        // this.ctx.bindTexture(this.ctx.TEXTURE_2D, texture2);
 
-        // Set the parameters so we can render any size image.
-        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_WRAP_S, this.ctx.CLAMP_TO_EDGE);
-        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_WRAP_T, this.ctx.CLAMP_TO_EDGE);
-        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_MIN_FILTER, this.ctx.NEAREST);
-        this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_MAG_FILTER, this.ctx.NEAREST);
+        // // Set the parameters so we can render any size image.
+        // this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_WRAP_S, this.ctx.CLAMP_TO_EDGE);
+        // this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_WRAP_T, this.ctx.CLAMP_TO_EDGE);
+        // this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_MIN_FILTER, this.ctx.NEAREST);
+        // this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_MAG_FILTER, this.ctx.NEAREST);
 
-        // Upload the image into the texture.
-        this.ctx.texImage2D(this.ctx.TEXTURE_2D, 0, this.ctx.RGBA, this.ctx.RGBA, this.ctx.UNSIGNED_BYTE, testImage2);
+        // // Upload the image into the texture.
+        // this.ctx.texImage2D(this.ctx.TEXTURE_2D, 0, this.ctx.RGBA, this.ctx.RGBA, this.ctx.UNSIGNED_BYTE, testImage2);
 
-        for (let i = 0; i < 1000; i++) {
+        const padding: number = 10;
+        for (let i = 0; i < Main.NUM_QUADS; i++) {
             const randWidth: number = MathUtil.getRandInt(10, 100);
             const randHeight: number = MathUtil.getRandInt(10, 100);
 
             this.shapes.push(new Quad(
                 this.ctx,
-                MathUtil.getRandInt(0, this.ctx.canvas.width - randWidth),
-                MathUtil.getRandInt(0, this.ctx.canvas.width - randHeight),
+                MathUtil.getRandInt(padding, (this.ctx.canvas.width - randWidth) - (padding * 2)),
+                MathUtil.getRandInt(padding, (this.ctx.canvas.height - randHeight) - (padding * 2)),
                 randWidth,
                 randHeight,
-                i % 2 === 0 ? texture : texture2
+                texture
             ));
         }
 
@@ -159,39 +163,85 @@ export class Main {
 
         this.ctx.uniform2f(this.programInfo.uniformLocations.resolutionVec2, this.ctx.canvas.width, this.ctx.canvas.height);
 
-        this.shapes.forEach(shape => {
 
-            this.ctx.bindTexture(this.ctx.TEXTURE_2D, shape.texture);
+        for (let i = 0; i < Main.NUM_QUADS / Main.BATCH_SIZE; i++) {
+
+            let verts: number[] = [];
+            let texCoords: number[] = [];
             
-            this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.vertexPositions);
-            this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, shape.positionBuffer);
-            this.ctx.vertexAttribPointer(
-                this.programInfo.attribLocations.vertexPositions,
-                2,
-                this.ctx.FLOAT,
-                false,
-                0,
-                0
-            );
+            for (let j = 0; j < Main.BATCH_SIZE; j++) {
+                const shape: Quad = this.shapes[j + (Main.BATCH_SIZE * i)];
+    
+                this.ctx.bindTexture(this.ctx.TEXTURE_2D, shape.texture);
 
-            this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
-            this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, shape.textureCoordBuffer);
-            this.ctx.vertexAttribPointer(
-                this.programInfo.attribLocations.textureCoord,
-                2,
-                this.ctx.FLOAT,
-                false,
-                0,
-                0
-            );
+                verts.push(
+                    shape.position.x + shape.width, shape.position.y, // Top Right
+                    shape.position.x, shape.position.y, // Top Left
+                    shape.position.x + shape.width, shape.position.y + shape.height, // Bottom Right
 
-            this.ctx.drawArrays(this.ctx.TRIANGLE_STRIP, 0, shape.numVerts);
+                    shape.position.x, shape.position.y + shape.height, // Bottom Left
+                    shape.position.x + shape.width, shape.position.y + shape.height, // Bottom Right
+                    shape.position.x, shape.position.y, // Top Left
+                );
+                texCoords.push(
+                    1, 0, // TR
+                    0, 0, // TL
+                    1, 1, // BR
+                    
+                    0, 1, // BL
+                    1, 1, // BR
+                    0, 0, // TL
+                );
 
-            // Move squares
-            shape.position.x += Math.cos(this._prevTime + deltaTime) * 0.5;
-            shape.position.y += Math.sin(this._prevTime + deltaTime) * 0.5;
-            this.ctx.uniform2fv(this.programInfo.uniformLocations.positionVec2, shape.position.asArray());
-        });
+                // Move squares
+                shape.position.x += Math.cos(this._prevTime + deltaTime) * 0.5;
+                shape.position.y += Math.sin(this._prevTime + deltaTime) * 0.5;
+                this.ctx.uniform2fv(this.programInfo.uniformLocations.positionVec2, shape.position.asArray());
+            }
+
+            this.flushQuads(verts, texCoords);
+        }
+    }
+
+    private flushQuads(verts: number[], texCoords: number[]) {
+        
+        const vertBuffer: WebGLBuffer = this.ctx.createBuffer();
+        this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, vertBuffer);
+        this.ctx.bufferData(
+            this.ctx.ARRAY_BUFFER,
+            new Float32Array(verts),
+            this.ctx.DYNAMIC_DRAW
+        );
+
+        this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.vertexPositions);
+        this.ctx.vertexAttribPointer(
+            this.programInfo.attribLocations.vertexPositions,
+            2,
+            this.ctx.FLOAT,
+            false,
+            0,
+            0
+        );
+
+        const texBuffer: WebGLBuffer = this.ctx.createBuffer();
+        this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, texBuffer);
+        this.ctx.bufferData(
+            this.ctx.ARRAY_BUFFER,
+            new Float32Array(texCoords),
+            this.ctx.STATIC_DRAW
+        );
+        
+        this.ctx.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
+        this.ctx.vertexAttribPointer(
+            this.programInfo.attribLocations.textureCoord,
+            2,
+            this.ctx.FLOAT,
+            false,
+            0,
+            0
+        );
+
+        this.ctx.drawArrays(this.ctx.TRIANGLES, 0, verts.length / Quad.NUM_TRIS);
     }
 }
 

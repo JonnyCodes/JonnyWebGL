@@ -7,7 +7,7 @@ import { MathUtil } from "./core/math/MathUtil";
 export class Main {
 
     private static NUM_QUADS: number = 65000;
-    private static BATCH_SIZE: number = 1000;
+    private static BATCH_SIZE: number = 500;
 
     private ctx: WebGLRenderingContext;
     private camera: OrthogonalCamera;
@@ -203,8 +203,15 @@ export class Main {
                 );
 
                 // Move square
-                quad.position.x += Math.cos(this._prevTime + deltaTime) * 0.5;
-                quad.position.y += Math.sin(this._prevTime + deltaTime) * 0.5;
+                // quad.position.x += Math.cos(this._prevTime + deltaTime) * 0.5;
+                // quad.position.y += Math.sin(this._prevTime + deltaTime) * 0.5;
+
+                quad.position.y += 9.81;
+
+                if ( quad.position.y > this.ctx.canvas.height + quad.height) {
+                    quad.position.y = -quad.height;
+                    quad.position.x = Math.random() * this.ctx.canvas.width - quad.width;
+                }
             }
 
             this.flushQuads();

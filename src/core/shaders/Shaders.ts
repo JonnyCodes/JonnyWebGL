@@ -4,14 +4,13 @@ export class Shaders {
         attribute vec2 aTextureCoord;
 
         uniform vec2 uResolution;
-        uniform vec2 uPosition;
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
 
         varying highp vec2 vTextureCoord;
 
         void main() {
-            vec2 zeroToOne = (aVertexPosition) / uResolution;
+            vec2 zeroToOne = aVertexPosition / uResolution;
             vec2 zeroToTwo = zeroToOne * 2.0;
             vec2 clipSpace = zeroToTwo - 1.0;
             gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(clipSpace * vec2(1, -1), 0, 1);

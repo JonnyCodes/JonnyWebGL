@@ -6,13 +6,18 @@ import { MathUtil } from "./core/math/MathUtil";
 
 export class Main {
 
-    private static NUM_QUADS: number = 25000;
+    private static NUM_QUADS: number = 65000;
     private static BATCH_SIZE: number = 1000;
 
     private ctx: WebGLRenderingContext;
     private camera: OrthogonalCamera;
     private programInfo: ProgramInfo;
-    private shapes: Quad[];
+    private quads: Quad[];
+    private texture: WebGLTexture;
+    private vertBuffer: WebGLBuffer;
+    private vertArr: number[];
+    private textureBuffer: WebGLBuffer;
+    private textureArr: number[];
 
     private _prevTime: number;
 
@@ -47,18 +52,20 @@ export class Main {
             },
             uniformLocations: {
                 resolutionVec2: this.ctx.getUniformLocation(shaderProgram, "uResolution"),
-                positionVec2: this.ctx.getUniformLocation(shaderProgram, "uPosition"),
                 projectionMatrix: this.ctx.getUniformLocation(shaderProgram, "uProjectionMatrix"),
                 modelViewMatrix: this.ctx.getUniformLocation(shaderProgram, "uModelViewMatrix")
             }
         }
-        this.shapes = [];
+        this.quads = [];
+
+        this.vertBuffer = this.ctx.createBuffer();
+        this.textureBuffer = this.ctx.createBuffer();
         
 
         // TODO: Load images and create textures, store them in an object (key = url?)
         const testImage: HTMLImageElement = document.getElementById("testImage") as HTMLImageElement;
-        const texture = this.ctx.createTexture();
-        this.ctx.bindTexture(this.ctx.TEXTURE_2D, texture);
+        this.texture = this.ctx.createTexture();
+        this.ctx.bindTexture(this.ctx.TEXTURE_2D, this.texture);
 
         // Set the parameters so we can render any size image.
         this.ctx.texParameteri(this.ctx.TEXTURE_2D, this.ctx.TEXTURE_WRAP_S, this.ctx.CLAMP_TO_EDGE);
@@ -87,18 +94,19 @@ export class Main {
             const randWidth: number = MathUtil.getRandInt(10, 100);
             const randHeight: number = MathUtil.getRandInt(10, 100);
 
-            this.shapes.push(new Quad(
+            this.quads.push(new Quad(
                 this.ctx,
                 MathUtil.getRandInt(padding, (this.ctx.canvas.width - randWidth) - (padding * 2)),
                 MathUtil.getRandInt(padding, (this.ctx.canvas.height - randHeight) - (padding * 2)),
                 randWidth,
                 randHeight,
-                texture
+                this.texture
             ));
         }
 
         this._prevTime = 0;
 
+        this.ctx.bindTexture(this.ctx.TEXTURE_2D, this.texture);
         requestAnimationFrame(this.render.bind(this));
     }
 
@@ -163,27 +171,28 @@ export class Main {
 
         this.ctx.uniform2f(this.programInfo.uniformLocations.resolutionVec2, this.ctx.canvas.width, this.ctx.canvas.height);
 
+        let i: number = 0;
+        const iMax: number = Main.NUM_QUADS / Main.BATCH_SIZE;
+        for (; i < iMax; i++) {
 
-        for (let i = 0; i < Main.NUM_QUADS / Main.BATCH_SIZE; i++) {
+            this.vertArr = [];
+            this.textureArr = [];
 
-            let verts: number[] = [];
-            let texCoords: number[] = [];
-            
-            for (let j = 0; j < Main.BATCH_SIZE; j++) {
-                const shape: Quad = this.shapes[j + (Main.BATCH_SIZE * i)];
-    
-                this.ctx.bindTexture(this.ctx.TEXTURE_2D, shape.texture);
+            let j: number = 0;
+            const jMax: number = Main.BATCH_SIZE;
+            for (; j < jMax; j++) {
+                const quad: Quad = this.quads[j + (Main.BATCH_SIZE * i)];
 
-                verts.push(
-                    shape.position.x + shape.width, shape.position.y, // Top Right
-                    shape.position.x, shape.position.y, // Top Left
-                    shape.position.x + shape.width, shape.position.y + shape.height, // Bottom Right
+                this.vertArr.push(
+                    quad.position.x + quad.width, quad.position.y, // Top Right
+                    quad.position.x, quad.position.y, // Top Left
+                    quad.position.x + quad.width, quad.position.y + quad.height, // Bottom Right
 
-                    shape.position.x, shape.position.y + shape.height, // Bottom Left
-                    shape.position.x + shape.width, shape.position.y + shape.height, // Bottom Right
-                    shape.position.x, shape.position.y, // Top Left
+                    quad.position.x, quad.position.y + quad.height, // Bottom Left
+                    quad.position.x + quad.width, quad.position.y + quad.height, // Bottom Right
+                    quad.position.x, quad.position.y, // Top Left
                 );
-                texCoords.push(
+                this.textureArr.push(
                     1, 0, // TR
                     0, 0, // TL
                     1, 1, // BR
@@ -193,23 +202,21 @@ export class Main {
                     0, 0, // TL
                 );
 
-                // Move squares
-                shape.position.x += Math.cos(this._prevTime + deltaTime) * 0.5;
-                shape.position.y += Math.sin(this._prevTime + deltaTime) * 0.5;
-                this.ctx.uniform2fv(this.programInfo.uniformLocations.positionVec2, shape.position.asArray());
+                // Move square
+                quad.position.x += Math.cos(this._prevTime + deltaTime) * 0.5;
+                quad.position.y += Math.sin(this._prevTime + deltaTime) * 0.5;
             }
 
-            this.flushQuads(verts, texCoords);
+            this.flushQuads();
         }
     }
 
-    private flushQuads(verts: number[], texCoords: number[]) {
+    private flushQuads() {
         
-        const vertBuffer: WebGLBuffer = this.ctx.createBuffer();
-        this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, vertBuffer);
+        this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, this.vertBuffer);
         this.ctx.bufferData(
             this.ctx.ARRAY_BUFFER,
-            new Float32Array(verts),
+            new Float32Array(this.vertArr),
             this.ctx.DYNAMIC_DRAW
         );
 
@@ -223,11 +230,10 @@ export class Main {
             0
         );
 
-        const texBuffer: WebGLBuffer = this.ctx.createBuffer();
-        this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, texBuffer);
+        this.ctx.bindBuffer(this.ctx.ARRAY_BUFFER, this.textureBuffer);
         this.ctx.bufferData(
             this.ctx.ARRAY_BUFFER,
-            new Float32Array(texCoords),
+            new Float32Array(this.textureArr),
             this.ctx.STATIC_DRAW
         );
         
@@ -241,7 +247,7 @@ export class Main {
             0
         );
 
-        this.ctx.drawArrays(this.ctx.TRIANGLES, 0, verts.length / Quad.NUM_TRIS);
+        this.ctx.drawArrays(this.ctx.TRIANGLES, 0, this.vertArr.length / Quad.NUM_TRIS);
     }
 }
 
@@ -250,7 +256,6 @@ export class ProgramInfo {
     public attribLocations: { vertexPositions: number, textureCoord: number };
     public uniformLocations: { 
         resolutionVec2: WebGLUniformLocation,
-        positionVec2: WebGLUniformLocation,
         projectionMatrix: WebGLUniformLocation,
         modelViewMatrix: WebGLUniformLocation
     };
